@@ -2,7 +2,26 @@ import React from "react";
 import { useState } from "react";
 import { FaSignInAlt } from "react-icons/fa";
 
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { setUser } from "../store/slices/userSlice";
+import { useEffect } from "react";
+import { toast } from "react-toastify";
+import { useLoginMutation } from "../store/api/userApi";
+
 const Login = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [login, { isLoading }] = useLoginMutation();
+  const { user } = useSelector((state) => state.user);
+
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -16,8 +35,25 @@ const Login = () => {
     }));
   };
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
+    try {
+      const response = await login(formData);
+      if (response.error) {
+        toast.error(
+          response.error.data?.message ||
+            response.error.error ||
+            "Registration failed"
+        );
+      } else {
+        dispatch(setUser(response.data));
+        localStorage.setItem("user", JSON.stringify(response.data));
+        navigate("/");
+        toast.success(`Welcome ${response.data.name}!`);
+      }
+    } catch (err) {
+      console.error("Login failed", err);
+    }
   };
 
   console.log(formData);
@@ -30,9 +66,10 @@ const Login = () => {
       </section>
 
       <section className="form">
-        <form onSubmit={onsubmit}>
+        <form onSubmit={onSubmit}>
           <div className="form-group">
             <input
+              required
               type="email"
               className="form-control"
               id="email"
@@ -44,6 +81,7 @@ const Login = () => {
           </div>
           <div className="form-group">
             <input
+              required
               type="password"
               className="form-control"
               id="password"
@@ -55,8 +93,12 @@ const Login = () => {
           </div>
 
           <div className="form-group">
-            <button type="submit" className="btn btn-block">
-              Login
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn btn-block"
+            >
+              {isLoading ? "Please wait" : "Login "}
             </button>
           </div>
         </form>
